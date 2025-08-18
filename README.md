@@ -28,7 +28,7 @@ shortcuts, metadata tagging, and album art support.
 ## Installation & Setup
 
 ``` bash
-git clone https://github.com/numairazman/icho-.git
+git clone https://github.com/numairazman/icho.git
 cd icho
 python3 -m venv .venv
 source .venv/bin/activate
