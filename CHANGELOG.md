@@ -2,7 +2,26 @@
 
 All notable changes to this project will be documented in this file following the “Keep a Changelog” format. See https://keepachangelog.com for guidance.
 
-## [1.0.0] – 2025‑08‑18
+## [1.1.0] – 2025-08-18
+### Added
+- **Theme support**:
+  - Tools → Dark Mode toggle
+  - Remembers last theme (light/dark) across sessions via `QSettings`
+- **Playlists menu**:
+  - Save/Load playlists to `.json`
+  - Automatic tracking of last 5 recent playlists
+  - Ability to pin up to 10 playlists for quick access
+- **Scripts for launching**:
+  - `scripts/run.sh` for Linux/macOS
+  - `scripts/run.bat` for Windows
+
+### Fixed
+- Now Playing text colors properly adapt to dark/light themes
+- Cover image updates refresh reliably when changing tracks
+
+---
+
+## [1.0.0] – 2025-08-18
 ### Added
 - Drag-and-drop support for files and folders
 - Playback controls: Play/Pause, Stop, Next, Previous, Seek Slider, Volume Slider
@@ -31,4 +50,4 @@ All notable changes to this project will be documented in this file following th
 
 ---
 
-*Icho v1.0 released. Let me know if you’d like non‑English support, command-line control, or theme options!*
+*Icho v1.0 released.*

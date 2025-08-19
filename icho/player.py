@@ -15,7 +15,6 @@ def _enum_to_int(e) -> int:
     except (TypeError, ValueError):
         return int(getattr(e, "value", 0))
 
-
 # Cache the "playing" state as an int (Pylance-safe, with fallback)
 try:
     _PLAYING_INT = _enum_to_int(QMediaPlayer.PlaybackState.PlayingState)  # type: ignore[attr-defined]
@@ -170,3 +169,32 @@ class AudioPlayer(QObject):
             self.errorOccurred.emit(f"Playback error: {args[0]}")
         else:
             self.errorOccurred.emit("Unknown playback error.")
+    # --- NEW: expose current index / track ---------------------------------
+    def current_index(self) -> int:
+        """Return the 0-based index of the current track, or -1 if none selected."""
+        return int(self._index)
+
+    def current_track(self) -> str | None:
+        """Return the current track path or None if nothing is selected."""
+        if 0 <= self._index < len(self._playlist):
+            return self._playlist[self._index]
+        return None
+
+    # --- NEW: set the entire playlist (for Load Playlist) -------------------
+    def set_playlist(self, paths: list[str], start_index: int = 0) -> None:
+        """
+        Replace the entire playlist and optionally set a starting index.
+        The player will load (but not auto-play) the selected track.
+        """
+        self.stop()
+        self._playlist = list(paths)
+        if not self._playlist:
+            self._index = -1
+            # Clear any loaded source to avoid showing stale metadata
+            self._player.setSource(QUrl())  # type: ignore[arg-type]
+            return
+
+        # Clamp index into valid range
+        self._index = max(0, min(int(start_index), len(self._playlist) - 1))
+        self._load_current()  # emits trackChanged
+
