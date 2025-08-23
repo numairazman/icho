@@ -31,3 +31,6 @@ Thumbs.db
 #Distribution / packaging
 build/
 dist/
+
+# PyInstaller
+*.spec
