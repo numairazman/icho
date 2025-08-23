@@ -10,10 +10,12 @@ REM Jump to project root (one level up from scripts/)
 cd /d "%~dp0.."
 
 REM ---------- Detect or create venv ----------
-if not exist ".venv\Scripts\python.exe" (
-    echo [Icho] Creating virtual environment (.venv)...
-    py -3 -m venv .venv || python -m venv .venv
-)
+if exist ".venv\Scripts\python.exe" goto venv_ready
+echo [Icho] Creating virtual environment (.venv)...
+py -3 -m venv .venv
+if exist ".venv\Scripts\python.exe" goto venv_ready
+python -m venv .venv
+:venv_ready
 
 REM ---------- Activate venv ----------
 call ".venv\Scripts\activate"
