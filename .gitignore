@@ -27,3 +27,7 @@ Thumbs.db
 # Test / coverage
 .coverage
 .pytest_cache/
+
+#Distribution / packaging
+build/
+dist/

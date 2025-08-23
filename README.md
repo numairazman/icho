@@ -1,16 +1,21 @@
-# Icho --- Local Music Player (v1.3)
+# Icho --- Local Music Player (v1.4)
+
+**A portable Windows .exe will be available soon in the [Releases tab](https://github.com/numairazman/icho/releases)!**
 
 Icho is a lightweight, free and offline-capable local music player built
 with Python and PySide6. It offers drag-and-drop playlists, keyboard
 shortcuts, metadata tagging, album art support, theming, playlist management,
-a library system, shuffle/repeat/autoplay, and robust cross-platform launchers.
+a library system, shuffle/repeat/autoplay, robust cross-platform launchers, and more.
 
 ---
 
-## Features (v1.3)
+## Features (v1.4)
 
 - **Sidebar navigation**: Switch between Library and Playlists easily
 - **Library system**: Select a folder as your music library; auto-scans for supported files
+- **Search box in Library**: Quickly filter songs by title or artist
+- **Metadata display**: Songs in Library and Playlist show Title — Artist (from tags or filename)
+- **Autotag refresh**: After autotagging, song titles and artists update in the UI
 - **Simple playlist creation**: Drag files or folders directly into
   the window, or use **File → Open Files/Folder**
 - **Playback controls**: Play/Pause, Next, Previous, Stop, Seek bar,
@@ -54,6 +59,8 @@ Or use the provided helper scripts:
 - **Linux/macOS**: `./scripts/run.sh`
 - **Windows**: `scripts\run.bat`
 
+**A portable Windows .exe will be available soon in the [Releases tab](https://github.com/numairazman/icho/releases)!**
+
 ---
 
 ## Usage Tips
@@ -65,6 +72,7 @@ Or use the provided helper scripts:
 - Use **Tools → Auto-tag All** to tag your entire playlist in batch.
 - Save and load playlists in JSON format, and manage them via the **Playlists** menu.
 - Use the sidebar to switch between your library and playlists.
+- Use the search box above the library to quickly find songs by title or artist.
 - Shuffle, repeat, and autoplay options are available for seamless listening.
 - Toggle Dark/Light mode from the Tools menu; your preference is remembered on next launch.
 - Invalid or missing metadata falls back to filename styling ("Title -- Artist").

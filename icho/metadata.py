@@ -12,7 +12,9 @@ from typing import Optional, Dict, Any
 import re
 import requests
 import mutagen
-from mutagen.id3 import ID3, APIC, TIT2, TALB, TPE1, error as ID3Error
+from mutagen.id3 import ID3
+from mutagen.id3._frames import APIC, TIT2, TALB, TPE1
+from mutagen.id3._util import error as ID3Error
 from mutagen.flac import FLAC, Picture
 from mutagen.mp4 import MP4, MP4Cover
 

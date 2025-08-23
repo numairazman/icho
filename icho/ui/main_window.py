@@ -10,15 +10,15 @@ from PySide6.QtCore import Qt, QSettings, Slot
 from PySide6.QtGui import QAction, QKeySequence, QPixmap, QPalette, QColor
 from PySide6.QtWidgets import (
     QWidget, QMainWindow, QFileDialog, QListWidget, QListWidgetItem,
-    QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider, QMessageBox, QFrame, QApplication
+    QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider, QMessageBox, QFrame, QApplication, QLineEdit
 )
 
 from icho.player import AudioPlayer
 from icho.playlists import PlaylistManager
+from icho.metadata import autotag
 
 # 3rd-party lib for audio tags (already in requirements.txt)
 import mutagen
-from icho import metadata
 
 # Accept common audio extensions (lowercase)
 AUDIO_EXTS = {".flac", ".mp3", ".wav", ".ogg", ".m4a"}
@@ -71,6 +71,9 @@ class DropList(QListWidget):
 
 
 class MainWindow(QMainWindow):
+    def _on_library_search(self, text: str):
+        self._render_library_list(text)
+
     def _select_library_folder(self):
         """Prompt user to select a folder as the music library."""
         folder = QFileDialog.getExistingDirectory(self, "Select Library Folder", str(Path.home()))
@@ -89,14 +92,23 @@ class MainWindow(QMainWindow):
             self._show_playlist()
 
     def _show_library(self):
+        self._render_library_list()
+        self.list_widget.itemDoubleClicked.disconnect()
+        self.list_widget.itemDoubleClicked.connect(self._play_selected_library_item)
+
+    def _render_library_list(self, filter_text: str = ""):
         self.list_widget.clear()
+        filter_text = filter_text.strip().lower()
         for p in self.library_tracks:
-            item = QListWidgetItem(Path(p).name)
+            title, artist, _ = self._read_tags(p)
+            display = f"{title} — {artist}" if title else Path(p).name
+            if filter_text:
+                if filter_text not in display.lower():
+                    continue
+            item = QListWidgetItem(display)
             item.setToolTip(p)
             item.setData(Qt.ItemDataRole.UserRole, p)
             self.list_widget.addItem(item)
-        self.list_widget.itemDoubleClicked.disconnect()
-        self.list_widget.itemDoubleClicked.connect(self._play_selected_library_item)
 
     def _play_selected_library_item(self, item: QListWidgetItem) -> None:
         path = item.data(Qt.ItemDataRole.UserRole)
@@ -109,7 +121,9 @@ class MainWindow(QMainWindow):
     def _show_playlist(self):
         self.list_widget.clear()
         for p in self.player.playlist():
-            item = QListWidgetItem(Path(p).name)
+            title, artist, _ = self._read_tags(p)
+            display = f"{title} — {artist}" if title else Path(p).name
+            item = QListWidgetItem(display)
             item.setToolTip(p)
             item.setData(Qt.ItemDataRole.UserRole, p)
             self.list_widget.addItem(item)
@@ -245,6 +259,11 @@ class MainWindow(QMainWindow):
         self.sidebar.setCurrentRow(1)  # Default to playlist view
         self.sidebar.itemClicked.connect(self._on_sidebar_clicked)
 
+        # ------- Library search box -------
+        self.library_search = QLineEdit()
+        self.library_search.setPlaceholderText("Search by title or artist...")
+        self.library_search.textChanged.connect(self._on_library_search)
+
         # ------- Track list (drag & drop) -------
         self.list_widget = DropList(self._add_paths)
         self.list_widget.itemDoubleClicked.connect(self._play_selected_item)
@@ -322,9 +341,14 @@ class MainWindow(QMainWindow):
         right.addStretch(1)
 
         # ------- Main horizontal split (sidebar, list, controls) -------
+        library_box = QVBoxLayout()
+        library_box.addWidget(self.library_search)
+        library_box.addWidget(self.list_widget, 1)
+        library_widget = QWidget(); library_widget.setLayout(library_box)
+
         main = QHBoxLayout()
         main.addWidget(self.sidebar)
-        main.addWidget(self.list_widget, 1)
+        main.addWidget(library_widget, 1)
         right_box = QWidget(); right_box.setLayout(right)
         main.addWidget(right_box, 1)
 
@@ -474,8 +498,9 @@ class MainWindow(QMainWindow):
     def _about(self) -> None:
         QMessageBox.information(
             self, "About Icho",
-            "Icho v1.3 — a lightweight, local music player.\n"
-            "Now with Open Folder, drag-and-drop, Now Playing metadata panel, sidebar, library, playlists, shuffle/repeat/autoplay, and more."
+            "Icho v1.4 — a lightweight, local music player.\n"
+            "Now with Open Folder, drag-and-drop, Now Playing metadata panel, sidebar, library, playlists, search box, metadata display, autotag refresh, shuffle/repeat/autoplay, and more.\n\n"
+            "A portable Windows .exe will be available soon in the Releases tab."
         )
 
     # -------------------- Metadata helpers --------------------
@@ -521,7 +546,7 @@ class MainWindow(QMainWindow):
         - Updates the Now Playing panel with the new tags and cover
         """
         try:
-            res = metadata.autotag(path)
+            res = autotag(path)
         except Exception as e:
             QMessageBox.warning(self, "Auto-tag", f"Failed: {e}")
             return
@@ -530,6 +555,9 @@ class MainWindow(QMainWindow):
         t, ar, al = self._read_tags(path)
         self._set_metadata(t, ar, al)
         self._set_cover(self._read_cover_bytes(path))
+
+        # Refresh visible list for this item
+        self._refresh_list_item(path)
 
         # Optional: tell the user what happened
         if res.get("ok"):
@@ -554,15 +582,26 @@ class MainWindow(QMainWindow):
         changed = 0
         for i in range(self.list_widget.count()):
             p = self.list_widget.item(i).data(Qt.ItemDataRole.UserRole)
-            res = metadata.autotag(p)
+            res = autotag(p)
             changed += 1 if res.get("ok") else 0
+            self._refresh_list_item(p)
         # Refresh current item's panel
         cur = self._current_path()
         if cur:
             t, ar, al = self._read_tags(cur)
             self._set_metadata(t, ar, al)
-            self._set_cover(self._read_cover_bytes(cur))  # ✅
+            self._set_cover(self._read_cover_bytes(cur))
         QMessageBox.information(self, "Auto-tag", f"Finished. Updated {changed} file(s).")
+
+    def _refresh_list_item(self, path: str) -> None:
+        # Update the display text for the item matching path
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            if item.data(Qt.ItemDataRole.UserRole) == path:
+                title, artist, _ = self._read_tags(path)
+                display = f"{title} — {artist}" if title else Path(path).name
+                item.setText(display)
+                break
 
     # -------------------- Cover helpers --------------------
     def _read_cover_bytes(self, path: str) -> bytes | None:

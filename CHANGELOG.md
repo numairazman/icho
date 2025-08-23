@@ -2,7 +2,28 @@
 
 All notable changes to this project will be documented in this file following the “Keep a Changelog” format. See https://keepachangelog.com for guidance.
 
-# ## [1.3.0] – 2025-08-23
+## [1.4.0] – 2025-08-23
+
+**A portable Windows .exe will be available soon in the Releases tab!**
+
+### Added
+
+- Search box above Library for filtering songs by title or artist
+- Songs in Library and Playlist show Title — Artist (from metadata or filename)
+- After autotagging, song titles and artists update in the UI
+
+### Fixed
+
+- Metadata display and refresh after autotag
+- Import errors for mutagen.id3 frames and error
+- Autotag function import and usage
+
+### Changed
+
+- README updated for v1.4 features
+- Version string updated to v1.4
+
+## [1.3.0] – 2025-08-23
 
 ### Added
 
