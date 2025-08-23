@@ -1,4 +1,4 @@
-# main.py — Entry point for Icho v1.1
+# main.py — Entry point for Icho v1.3
 #
 # Minimal bootstrap. Theme is controlled inside MainWindow (Tools → Dark Mode)
 # and persisted via QSettings; we do NOT force a palette here.

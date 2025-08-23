@@ -10,22 +10,9 @@ REM Jump to project root (one level up from scripts/)
 cd /d "%~dp0.."
 
 REM ---------- Detect or create venv ----------
-if exist ".venv\Scripts\python.exe" (
-    echo [Icho] Using existing venv: .venv
-) else (
+if not exist ".venv\Scripts\python.exe" (
     echo [Icho] Creating virtual environment (.venv)...
-    where py >nul 2>&1
-    if %ERRORLEVEL%==0 (
-        py -3 -m venv .venv || (
-            echo [Icho] Failed to create venv with py.
-            exit /b 1
-        )
-    ) else (
-        python -m venv .venv || (
-            echo [Icho] Failed to create venv with python.
-            exit /b 1
-        )
-    )
+    py -3 -m venv .venv || python -m venv .venv
 )
 
 REM ---------- Activate venv ----------
@@ -47,4 +34,4 @@ echo [Icho] Launching Icho...
 python main.py
 
 REM Keep terminal open if run by double-click
-if /i "%CMDCMDLINE%" neq "" pause
+pause

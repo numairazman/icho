@@ -1,9 +1,36 @@
-# Changelog
+# CHANGELOG - Icho
 
 All notable changes to this project will be documented in this file following the “Keep a Changelog” format. See https://keepachangelog.com for guidance.
 
-## [1.1.0] – 2025-08-18
+# ## [1.3.0] – 2025-08-23
+
 ### Added
+
+- Sidebar navigation for Library and Playlists
+- Library folder selection and scanning
+- Playlists menu with Load/Save actions (moved from File menu)
+- Shuffle, Repeat, and Autoplay playback features
+- Automatic track skipping when a song ends (autoplay)
+- Robust Windows launcher script (`run.bat`) for venv and dependencies
+
+### Fixed
+
+- Play/Pause button now reliably toggles playback (no skipping)
+- Next button respects Shuffle mode
+- Autoplay logic now works for all supported formats
+- Menu structure restored (File, Tools, Help, Playlists)
+- All debug output removed from production code
+
+### Changed
+
+- Refactored signal/slot logic for PySide6 reliability
+- Improved error handling and startup robustness
+- Updated run.bat for better Windows compatibility
+
+## [1.1.0] – 2025-08-18
+
+### Added
+
 - **Theme support**:
   - Tools → Dark Mode toggle
   - Remembers last theme (light/dark) across sessions via `QSettings`
@@ -16,13 +43,16 @@ All notable changes to this project will be documented in this file following th
   - `scripts/run.bat` for Windows
 
 ### Fixed
+
 - Now Playing text colors properly adapt to dark/light themes
 - Cover image updates refresh reliably when changing tracks
 
 ---
 
 ## [1.0.0] – 2025-08-18
+
 ### Added
+
 - Drag-and-drop support for files and folders
 - Playback controls: Play/Pause, Stop, Next, Previous, Seek Slider, Volume Slider
 - Playlist panel with double-click to play
@@ -40,14 +70,16 @@ All notable changes to this project will be documented in this file following th
   - `tasks.json` for virtualenv & dependency setup
 
 ### Fixed
+
 - Resolved PySide6 signal issues by forwarding via `@Slot(int)`
 - Improved reliability of Next/Prev navigation and now-playing updates
 
 ### Known Issues
+
 - Gtk warning `"Failed to load module 'xapp-gtk3-module'"` — harmless on some Linux distros
 - Occasional FFmpeg timestamp warnings during MP3 decoding — benign
 - Cover updates only reflect embedded artwork; external fetch not displayed until tagged
 
 ---
 
-*Icho v1.0 released.*
+_Icho v1.0 released._

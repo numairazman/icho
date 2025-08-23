@@ -39,6 +39,8 @@ class AudioPlayer(QObject):
     stateChanged = Signal(int)
     errorOccurred = Signal(str)
 
+    playbackEnded = Signal()
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
@@ -56,6 +58,14 @@ class AudioPlayer(QObject):
         self._player.durationChanged.connect(self._forward_duration)
         self._player.playbackStateChanged.connect(self._forward_state)
         self._player.errorOccurred.connect(self._forward_error)
+        self._player.mediaStatusChanged.connect(self._on_media_status)
+
+    @Slot(object)
+    def _on_media_status(self, status):
+        # QMediaPlayer.MediaStatus.EndOfMedia == 7
+        # Try string comparison for EndOfMedia
+        if str(status) == "MediaStatus.EndOfMedia" or str(status) == "EndOfMedia" or str(status).endswith("EndOfMedia"):
+            self.playbackEnded.emit()
 
     # ---------------- Playlist management ----------------
     def clear(self) -> None:
@@ -93,8 +103,8 @@ class AudioPlayer(QObject):
             self.trackChanged.emit(path)
 
     def play(self) -> None:
-        """Start or resume playback. Auto-load first track if needed."""
-        if self._player.source().isEmpty() and self._playlist:
+        """Start or resume playback. Only load track if source is empty and index is valid."""
+        if self._player.source().isEmpty() and self._playlist and 0 <= self._index < len(self._playlist):
             self._load_current()
         self._player.play()
 
