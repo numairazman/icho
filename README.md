@@ -92,7 +92,7 @@ Or use the provided helper scripts:
 - **Linux/macOS**: `./scripts/run.sh`
 - **Windows**: `scripts\run.bat`
 
-**A portable Windows .exe will be available soon in the [Releases tab](https://github.com/numairazman/icho/releases)!**
+**A portable Windows .exe is available now in the [Releases tab](https://github.com/numairazman/icho/releases)!**
 
 ---
 
