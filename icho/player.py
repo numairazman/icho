@@ -1,7 +1,7 @@
 
 # icho/player.py
 # Full-featured AudioPlayer for Icho (PySide6)
-# Version: 1.4.1 (Windows hotfix)
+# Version: 1.4.2 (Shuffle previous/history bug fix)
 # - Restores previous()/next()/seek(), playlist, and signals
 # - Pylance-friendly: no "qlonglong" in @Slot, safe enum -> int conversion
 
@@ -26,6 +26,7 @@ class AudioPlayer(QObject):
         self._playlist = []
         self._index = -1
         self._poll_timer = None
+        self._history = []  # stack of previous indices for shuffle mode
 
     def set_volume(self, percent: int) -> None:
         percent = max(0, min(100, int(percent)))
@@ -65,17 +66,28 @@ class AudioPlayer(QObject):
         if self._player:
             self._player.set_time(max(0, int(ms)))
 
-    def next(self) -> None:
+    def next(self, shuffle=False) -> None:
         if self._playlist:
             self.stop()
-            self._index = (self._index + 1) % len(self._playlist)
+            if shuffle:
+                # Save current index to history before shuffling
+                if 0 <= self._index < len(self._playlist):
+                    self._history.append(self._index)
+                import random
+                next_idx = random.randint(0, len(self._playlist) - 1)
+                self._index = next_idx
+            else:
+                self._index = (self._index + 1) % len(self._playlist)
             self._load_current()
             self.play()
 
-    def previous(self) -> None:
+    def previous(self, shuffle=False) -> None:
         if self._playlist:
             self.stop()
-            self._index = (self._index - 1) % len(self._playlist)
+            if shuffle and self._history:
+                self._index = self._history.pop()
+            else:
+                self._index = (self._index - 1) % len(self._playlist)
             self._load_current()
             self.play()
 
@@ -102,6 +114,7 @@ class AudioPlayer(QObject):
         self.stop()
         self._playlist.clear()
         self._index = -1
+        self._history.clear()
 
     def add_files(self, paths: list) -> None:
         self._playlist.extend(paths)

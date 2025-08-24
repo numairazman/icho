@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file following the “Keep a Changelog” format. See https://keepachangelog.com for guidance.
 
+## [1.4.2] – 2025-08-24
+
+### Fixed
+
+- Shuffle mode: Previous button now correctly plays the last played song, not just the one above. Playback history is preserved in shuffle mode.
+- Version bumped to v1.4.2 everywhere.
+
+---
+
 ## [1.4.1] – 2025-08-23
 
 ### Hotfix (Windows)

@@ -63,7 +63,7 @@ def _migrate_legacy_dir_if_needed() -> None:
 # -----------------------------
 # App version
 # -----------------------------
-VERSION = "1.4.1"
+VERSION = "1.4.2"
 
 # -----------------------------
 # Settings model

@@ -1,6 +1,6 @@
-# Icho --- Local Music Player (v1.4.1)
+# Icho --- Local Music Player (v1.4.2)
 
-**v1.4.1 Windows hotfix:** Switched to python-vlc for reliable playback on Windows. See CHANGELOG for details.
+**v1.4.2:** Shuffle previous bug fixed, playback history now works in shuffle mode. See CHANGELOG for details.
 
 **A portable Windows .exe will be available soon in the [Releases tab](https://github.com/numairazman/icho/releases)!**
 

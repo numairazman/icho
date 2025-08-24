@@ -34,3 +34,7 @@ dist/
 
 # PyInstaller
 *.spec
+
+# .tgz and .zip files
+*.tgz
+*.zip

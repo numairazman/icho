@@ -139,12 +139,8 @@ class MainWindow(QMainWindow):
         pass
 
     def _play_random_track(self):
-        import random
-        playlist = self.player.playlist()
-        if playlist:
-            idx = random.randint(0, len(playlist) - 1)
-            self.player.set_playlist(playlist, idx)
-            self.player.play()
+        # Use AudioPlayer's shuffle logic and history
+        self.player.next(shuffle=True)
 
     def _build_menu(self):
         file_menu = self.menuBar().addMenu("&File")
@@ -358,7 +354,7 @@ class MainWindow(QMainWindow):
         self._build_menu()
         # Connect signals
         self.play_btn.clicked.connect(self.player.toggle_play)
-        self.prev_btn.clicked.connect(self.player.previous)
+        self.prev_btn.clicked.connect(self._on_prev_clicked)
         self.next_btn.clicked.connect(self._on_next_clicked)
         self.stop_btn.clicked.connect(self.player.stop)
         self.volume_slider.valueChanged.connect(self._on_volume_changed)
@@ -378,9 +374,15 @@ class MainWindow(QMainWindow):
         else:
             self.sidebar.setCurrentRow(1)
 
+    def _on_prev_clicked(self):
+        if self.shuffle_enabled:
+            self.player.previous(shuffle=True)
+        else:
+            self.player.previous()
+
     def _on_next_clicked(self):
         if self.shuffle_enabled:
-            self._play_random_track()
+            self.player.next(shuffle=True)
         else:
             self.player.next()
 
@@ -498,8 +500,8 @@ class MainWindow(QMainWindow):
     def _about(self) -> None:
         QMessageBox.information(
             self, "About Icho",
-            "Icho v1.4.1 — a lightweight, local music player.\n"
-            "Windows hotfix: Switched to python-vlc for reliable playback.\n"
+            "Icho v1.4.2 — a lightweight, local music player.\n"
+            "Shuffle previous/history bug fixed: Previous now works correctly in shuffle mode.\n"
             "Now with Open Folder, drag-and-drop, Now Playing metadata panel, sidebar, library, playlists, search box, metadata display, autotag refresh, shuffle/repeat/autoplay, and more.\n\n"
             "A portable Windows .exe will be available soon in the Releases tab."
         )
