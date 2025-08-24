@@ -1,13 +1,14 @@
 
 # icho/player.py
 # Full-featured AudioPlayer for Icho (PySide6)
-# Version: 1.4.2 (Shuffle previous/history bug fix)
+# Version: 1.5 (Albums view, Play Next queue, manual tag editing)
 # - Restores previous()/next()/seek(), playlist, and signals
 # - Pylance-friendly: no "qlonglong" in @Slot, safe enum -> int conversion
 
 
 from PySide6.QtCore import QObject, Signal, QTimer
 import vlc
+import random
 
 class AudioPlayer(QObject):
     """
@@ -19,6 +20,7 @@ class AudioPlayer(QObject):
     stateChanged = Signal(int)
     errorOccurred = Signal(str)
     playbackEnded = Signal()
+    upcomingChanged = Signal()  # emitted whenever upcoming order changes
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -27,7 +29,88 @@ class AudioPlayer(QObject):
         self._index = -1
         self._poll_timer = None
         self._history = []  # stack of previous indices for shuffle mode
+        self._upcoming_indices = []  # indices (into _playlist) representing upcoming play order
+        self._last_shuffle = False   # last shuffle state used to build upcoming
+        self._manual_next = []  # list of indices manually queued to play next (in order)
 
+
+    # -------------------- Upcoming (Auto-Queue) Management --------------------
+    def rebuild_upcoming(self, shuffle: bool) -> None:
+        """Rebuild the upcoming track index list based on current playlist/index and shuffle state."""
+        self._last_shuffle = shuffle
+        if not self._playlist or not (0 <= self._index < len(self._playlist)):
+            self._upcoming_indices = []
+            self.upcomingChanged.emit()
+            return
+        remaining = [i for i in range(len(self._playlist)) if i != self._index]
+        if shuffle:
+            random.shuffle(remaining)
+        else:
+            # Keep only tracks AFTER the current one (no wrap) for linear order
+            remaining = [i for i in range(self._index + 1, len(self._playlist))]
+        self._upcoming_indices = remaining
+        self.upcomingChanged.emit()
+
+    def upcoming_tracks(self) -> list:
+        return [self._playlist[i] for i in self._upcoming_indices]
+
+    def remove_upcoming(self, position: int) -> None:
+        if 0 <= position < len(self._upcoming_indices):
+            self._upcoming_indices.pop(position)
+            self.upcomingChanged.emit()
+
+    def clear_upcoming(self) -> None:
+        self._upcoming_indices.clear()
+        self.upcomingChanged.emit()
+
+    def add_to_upcoming(self, paths: list[str]) -> None:
+        """Append given track paths to the upcoming order.
+        If a path is not yet in the playlist, append it to the playlist first.
+        Current track is never duplicated; duplicates in upcoming are avoided preserving first occurrence order."""
+        changed = False
+        for p in paths:
+            if p == self.current_track():
+                continue
+            if p in self._playlist:
+                idx = self._playlist.index(p)
+            else:
+                # Append new track to playlist
+                self._playlist.append(p)
+                idx = len(self._playlist) - 1
+                changed = True
+            # Avoid duplicate scheduling
+            if idx == self._index:
+                continue
+            if idx not in self._upcoming_indices:
+                self._upcoming_indices.append(idx)
+                changed = True
+        if changed:
+            self.upcomingChanged.emit()
+
+    def peek_next(self, shuffle: bool = False) -> str | None:
+        """Return the path that would play if next() were called now.
+        For shuffle: returns first upcoming (building if empty). For linear: next index with wrap.
+        Returns None if no valid next track (playlist empty or single-track edge where wrap would repeat)."""
+        if not self._playlist:
+            return None
+        # Manual overrides take priority
+        if self._manual_next:
+            idx = self._manual_next[0]
+            if 0 <= idx < len(self._playlist):
+                return self._playlist[idx]
+        if shuffle:
+            # Ensure upcoming list exists (mirrors logic that next() will use)
+            if not self._upcoming_indices:
+                self.rebuild_upcoming(True)
+            if self._upcoming_indices:
+                return self._playlist[self._upcoming_indices[0]]
+            return None
+        # linear
+        if len(self._playlist) <= 1:
+            return None
+        nxt_idx = self._index + 1 if self._index + 1 < len(self._playlist) else 0
+        return self._playlist[nxt_idx]
+    
     def set_volume(self, percent: int) -> None:
         percent = max(0, min(100, int(percent)))
         if self._player:
@@ -67,29 +150,50 @@ class AudioPlayer(QObject):
             self._player.set_time(max(0, int(ms)))
 
     def next(self, shuffle=False) -> None:
-        if self._playlist:
-            self.stop()
-            if shuffle:
-                # Save current index to history before shuffling
+        if not self._playlist:
+            return
+        self.stop()
+        # Manual play-next overrides
+        if self._manual_next:
+            idx = self._manual_next.pop(0)
+            if 0 <= idx < len(self._playlist):
+                self._index = idx
+                self._load_current()
+                # Only rebuild upcoming if shuffle AND upcoming empty (to avoid losing manual list order for subsequent items)
+                if shuffle and not self._manual_next and not self._upcoming_indices:
+                    self.rebuild_upcoming(True)
+                self.play()
+                self.upcomingChanged.emit()
+                return
+        if shuffle:
+            # If upcoming list exhausted, rebuild a new shuffle cycle (excluding current)
+            if not self._upcoming_indices:
+                self.rebuild_upcoming(True)
+            if self._upcoming_indices:
                 if 0 <= self._index < len(self._playlist):
                     self._history.append(self._index)
-                import random
-                next_idx = random.randint(0, len(self._playlist) - 1)
-                self._index = next_idx
+                self._index = self._upcoming_indices.pop(0)
+        else:
+            if self._index < len(self._playlist) - 1:
+                self._index += 1
             else:
-                self._index = (self._index + 1) % len(self._playlist)
-            self._load_current()
-            self.play()
+                self._index = 0
+        self._load_current()
+        # Rebuild upcoming (use current shuffle mode) excluding new current
+        self.rebuild_upcoming(shuffle)
+        self.play()
 
     def previous(self, shuffle=False) -> None:
-        if self._playlist:
-            self.stop()
-            if shuffle and self._history:
-                self._index = self._history.pop()
-            else:
-                self._index = (self._index - 1) % len(self._playlist)
-            self._load_current()
-            self.play()
+        if not self._playlist:
+            return
+        self.stop()
+        if shuffle and self._history:
+            self._index = self._history.pop()
+        else:
+            self._index = (self._index - 1) % len(self._playlist)
+        self._load_current()
+        self.rebuild_upcoming(shuffle)
+        self.play()
 
     def duration(self) -> int:
         try:
@@ -115,6 +219,9 @@ class AudioPlayer(QObject):
         self._playlist.clear()
         self._index = -1
         self._history.clear()
+        self._upcoming_indices.clear()
+        self._manual_next.clear()
+        self.upcomingChanged.emit()
 
     def add_files(self, paths: list) -> None:
         self._playlist.extend(paths)
@@ -138,6 +245,37 @@ class AudioPlayer(QObject):
             return
         self._index = max(0, min(int(start_index), len(self._playlist) - 1))
         self._load_current()
+        # Rebuild upcoming with last known shuffle mode
+        self.rebuild_upcoming(self._last_shuffle)
+
+    # -------------------- Manual Play Next --------------------
+    def add_play_next(self, paths: list[str]) -> None:
+        """Insert given track paths so they will play next (in provided order).
+        Tracks are added to playlist if missing. Duplicates in the manual list are removed, preserving first occurrence.
+        Current track is never inserted."""
+        inserted_any = False
+        new_indices = []
+        for p in paths:
+            if p == self.current_track():
+                continue
+            if p in self._playlist:
+                idx = self._playlist.index(p)
+            else:
+                self._playlist.append(p)
+                idx = len(self._playlist) - 1
+            if idx == self._index:
+                continue
+            if idx not in new_indices and idx not in self._manual_next:
+                new_indices.append(idx)
+        if new_indices:
+            # Prepend in order so first path ends up first to play
+            self._manual_next = new_indices + self._manual_next
+            inserted_any = True
+        if inserted_any:
+            self.upcomingChanged.emit()
+
+    def manual_next_tracks(self) -> list[str]:
+        return [self._playlist[i] for i in self._manual_next if 0 <= i < len(self._playlist)]
 
     def _start_polling(self):
         if self._poll_timer is not None:

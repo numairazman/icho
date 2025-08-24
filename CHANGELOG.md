@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file following the “Keep a Changelog” format. See https://keepachangelog.com for guidance.
 
+## [1.5] – 2025-08-24
+
+### Added
+
+- Albums sidebar view with album browsing and album-only playback context
+- Play Next priority queue (manual override of upcoming track)
+- Manual Edit Tags / Cover dialog (title/artist/album + replace embedded artwork)
+
+### Changed
+
+- About dialog updated for v1.5
+- README updated for v1.5 feature summary
+
+### Fixed / Improved
+
+- Queue logic honors manual Play Next items before automatic upcoming list
+- Up Next label updates immediately after Play Next insertion
+- Tag writing for MP4 and ID3 with safer handling
+
+---
+
 ## [1.4.2] – 2025-08-24
 
 ### Fixed

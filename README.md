@@ -1,8 +1,8 @@
-# Icho --- Local Music Player (v1.4.2)
+# Icho --- Local Music Player (v1.5)
 
-**v1.4.2:** Shuffle previous bug fixed, playback history now works in shuffle mode. See CHANGELOG for details.
+**v1.5:** New Albums sidebar view, Play Next priority queue, manual Edit Tags / Cover dialog, improved auto-tag fixes. See CHANGELOG for details.
 
-**A portable Windows .exe will be available soon in the [Releases tab](https://github.com/numairazman/icho/releases)!**
+**A portable Windows .exe is now available in the [Releases tab](https://github.com/numairazman/icho/releases)!**
 
 Icho is a lightweight, free and offline-capable local music player built
 with Python and PySide6. It offers drag-and-drop playlists, keyboard
@@ -11,37 +11,68 @@ a library system, shuffle/repeat/autoplay, robust cross-platform launchers, and 
 
 ---
 
-## Features (v1.4.1)
+## Features (v1.5)
 
-- **Sidebar navigation**: Switch between Library and Playlists easily
-- **Library system**: Select a folder as your music library; auto-scans for supported files
-- **Search box in Library**: Quickly filter songs by title or artist
-- **Metadata display**: Songs in Library and Playlist show Title — Artist (from tags or filename)
-- **Autotag refresh**: After autotagging, song titles and artists update in the UI
-- **Simple playlist creation**: Drag files or folders directly into
-  the window, or use **File → Open Files/Folder**
-- **Playback controls**: Play/Pause, Next, Previous, Stop, Seek bar,
-  Volume control
-- **Shuffle, Repeat, and Autoplay**: Songs can automatically skip, shuffle, or repeat
-- **Now Playing panel**: Displays Title, Artist, Album, and Cover Art
-- **Automatic tagging**:
-  - Guess from filename (e.g., `Artist – Title`)
-  - Query MusicBrainz API for correct metadata
-  - Download cover art from Cover Art Archive
-  - Embed metadata and cover into the file using `mutagen`
-  - Accessible via **Tools → Auto-tag Current / Auto-tag All**
-- **Cover art rendering**: Reads embedded art and displays it in the
-  UI
-- **Playlists menu**:
-  - Save and load playlists to/from `.json`
-  - Remembers last 5 recent playlists
-  - Pin up to 10 favorite playlists for quick access
-  - Load/Save actions now in Playlists menu
-- **Themes**:
-  - Dark Mode and Light Mode toggle (via **Tools → Dark Mode**)
-  - Persists your last choice across sessions
-- **Robust Windows launcher**: Improved `run.bat` for venv and dependency setup
-- Tested formats: `.mp3`, `.flac`, `.m4a`
+### 1. Library & Albums
+
+- **Library folder scanning**: Point Icho at a root folder; it recursively indexes supported audio files (`.mp3`, `.flac`, `.m4a`, `.wav`, `.ogg`).
+- **Albums view (NEW)**: Sidebar now has an Albums section. Browse a deduplicated list of album names (fallback: "Unknown Album"). Double‑click an album to drill in; double‑click a track to play that album only.
+- **Album‑scoped playback**: Starting a song from an album view builds a temporary playlist containing only that album's tracks; the Upcoming queue reflects just that scope unless you manually add overrides.
+- **Search box**: Live filtering in Library by title or artist (case‑insensitive, metadata aware).
+- **Metadata-based display**: Track items show `Title — Artist` when tags exist; otherwise fall back to filename.
+
+### 2. Playlists & Queueing
+
+- **Ad‑hoc playlist building**: Drag files/folders in or use File → Open Files / Open Folder. Duplicate suppression while preserving order.
+- **Persistent playlist management**: Save / Load JSON playlists; automatic recent list (last 5) and pinnable favorites (up to 10) via the Playlists menu.
+- **Automatic Upcoming queue**: After you start playback, Icho auto‑generates an "upcoming" sequence from the current playlist or album (shuffle aware) — no manual seeding required.
+- **Play Next priority (NEW)**: Right‑click (context menu in track list) → Play Next instantly injects selected tracks at the front of the pending order without disturbing the underlying playlist order.
+- **Manual overrides list**: Maintains a short-term priority buffer consumed before auto upcoming items; cleared automatically as entries play or when you clear the playlist.
+- **Up Next label**: Always shows the real next track considering manual Play Next overrides and shuffle mode.
+- **Upcoming dialog**: Tools → View Upcoming to inspect and prune forthcoming tracks (remove individual entries or clear auto-generated list; manual overrides are reflected first).
+
+### 3. Playback Engine
+
+- **Transport controls**: Play/Pause, Next, Previous, Stop, Seek bar, Position + Duration time display, Volume slider with percentage.
+- **Shuffle**: Randomizes future order while preserving a playback history so Previous works intuitively even in shuffle mode.
+- **Repeat**: Optional repeat toggle for continuous playback.
+- **Autoplay**: Automatically advances at track end; logic integrates with shuffle/history and manual Play Next.
+- **Accurate Previous in Shuffle**: History stack ensures you traverse actual played sequence, not just list index math.
+
+### 4. Tagging & Metadata
+
+- **Auto-tag (Current / All)**: MusicBrainz lookup + Cover Art Archive retrieval + filename heuristic (`Artist – Title`) fallback.
+- **Fix Auto-tag (Current)**: Re-run tagging pipeline quickly if earlier lookup was low quality.
+- **Manual Edit Tags / Cover (NEW)**: Full in-app dialog to adjust Title, Artist, Album, and replace embedded artwork (MP3 ID3v2, FLAC pictures, M4A atoms) with immediate UI refresh.
+- **Embedded cover handling**: Reads existing artwork on each track change; scales with aspect preservation.
+- **Graceful fallbacks**: Missing fields display as `-`; cover placeholder text if no art.
+- **User agent identification**: Custom `Icho/x.y` user agent for polite API use.
+
+### 5. UI & UX
+
+- **Sidebar navigation**: Library / Albums / Current Playlist.
+- **Context menus**: Track list action for Play Next.
+- **Theme toggle**: Dark/Light (persisted via QSettings).
+- **Responsive metadata panel**: Immediate updates on track change, tag edits, autotag completion, and Play Next insertions.
+- **Non-blocking updates**: Signals decouple backend events (duration/position/track changes) from UI updates.
+
+### 6. Cross-Platform & Tooling
+
+- **PySide6 + python-vlc**: Cross-platform playback backend; avoids multimedia plugin issues on Windows.
+- **Launcher scripts**: `scripts/run.sh` (Linux/macOS) and `scripts/run.bat` (Windows) set up virtualenv and dependencies.
+- **(Planned)** Portable Windows executable and future packaging (AppImage / macOS bundle).
+
+### 7. Reliability & Data Integrity
+
+- **History aware shuffle** preventing repeat collisions in short sessions.
+- **De-duplication** when adding paths while preserving first-seen order.
+- **Safe tag writing** with exception handling per format; UI only updates on success.
+
+### 8. Extensibility Targets (Roadmap)
+
+- Lyrics (embedded / synced), no promises on this one
+- Additional formats (AAC/Opus containers, cue sheet parsing)
+- Smart playlists (rules: recently added, most played)
 
 ---
 
