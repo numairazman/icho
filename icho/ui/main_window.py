@@ -140,7 +140,7 @@ class MainWindow(QMainWindow):
 
     def _play_random_track(self):
         # Use AudioPlayer's shuffle logic and history
-        self.player.next(shuffle=True)
+        self.player.next()
 
     def _build_menu(self):
         file_menu = self.menuBar().addMenu("&File")
