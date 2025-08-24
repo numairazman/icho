@@ -59,6 +59,12 @@ def _migrate_legacy_dir_if_needed() -> None:
             # Fail silently to avoid blocking the app. (Optional: log to a debug file.)
             pass
 
+
+# -----------------------------
+# App version
+# -----------------------------
+VERSION = "1.4.1"
+
 # -----------------------------
 # Settings model
 # -----------------------------

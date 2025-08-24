@@ -498,7 +498,8 @@ class MainWindow(QMainWindow):
     def _about(self) -> None:
         QMessageBox.information(
             self, "About Icho",
-            "Icho v1.4 — a lightweight, local music player.\n"
+            "Icho v1.4.1 — a lightweight, local music player.\n"
+            "Windows hotfix: Switched to python-vlc for reliable playback.\n"
             "Now with Open Folder, drag-and-drop, Now Playing metadata panel, sidebar, library, playlists, search box, metadata display, autotag refresh, shuffle/repeat/autoplay, and more.\n\n"
             "A portable Windows .exe will be available soon in the Releases tab."
         )

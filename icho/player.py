@@ -1,210 +1,147 @@
+
 # icho/player.py
 # Full-featured AudioPlayer for Icho (PySide6)
+# Version: 1.4.1 (Windows hotfix)
 # - Restores previous()/next()/seek(), playlist, and signals
 # - Pylance-friendly: no "qlonglong" in @Slot, safe enum -> int conversion
 
-from typing import List
-from PySide6.QtCore import QObject, Signal, Slot, QUrl
-from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
-
-def _enum_to_int(e) -> int:
-    """Robustly convert Qt/Python enums to int (handles .value)."""
-    try:
-        return int(e)
-    except (TypeError, ValueError):
-        return int(getattr(e, "value", 0))
-
-# Cache the "playing" state as an int (Pylance-safe, with fallback)
-try:
-    _PLAYING_INT = _enum_to_int(QMediaPlayer.PlaybackState.PlayingState)  # type: ignore[attr-defined]
-except Exception:
-    _PLAYING_INT = 1  # Qt currently uses 1 for PlayingState
-
+from PySide6.QtCore import QObject, Signal, QTimer
+import vlc
 
 class AudioPlayer(QObject):
     """
-    Thin wrapper over QMediaPlayer with a simple in-memory playlist.
-
-    Signals:
-        trackChanged(str)     - path of the current track
-        positionChanged(int)  - ms
-        durationChanged(int)  - ms
-        stateChanged(int)     - QMediaPlayer.PlaybackState as int
-        errorOccurred(str)    - human-readable error message
+    VLC-based audio player for Icho. Handles playlist, playback, and emits signals for UI updates.
     """
     trackChanged = Signal(str)
     positionChanged = Signal(int)
     durationChanged = Signal(int)
     stateChanged = Signal(int)
     errorOccurred = Signal(str)
-
     playbackEnded = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-
-        # Backend objects
-        self._player = QMediaPlayer(self)
-        self._audio = QAudioOutput(self)
-        self._player.setAudioOutput(self._audio)
-
-        # In-memory playlist
-        self._playlist: List[str] = []
-        self._index: int = -1  # -1 => nothing selected
-
-        # Forward Qt signals via small slots (avoid Signal->Signal direct connect)
-        self._player.positionChanged.connect(self._forward_position)
-        self._player.durationChanged.connect(self._forward_duration)
-        self._player.playbackStateChanged.connect(self._forward_state)
-        self._player.errorOccurred.connect(self._forward_error)
-        self._player.mediaStatusChanged.connect(self._on_media_status)
-
-    @Slot(object)
-    def _on_media_status(self, status):
-        # QMediaPlayer.MediaStatus.EndOfMedia == 7
-        # Try string comparison for EndOfMedia
-        if str(status) == "MediaStatus.EndOfMedia" or str(status) == "EndOfMedia" or str(status).endswith("EndOfMedia"):
-            self.playbackEnded.emit()
-
-    # ---------------- Playlist management ----------------
-    def clear(self) -> None:
-        """Stop playback and empty the playlist."""
-        self.stop()
-        self._playlist.clear()
+        self._player = None
+        self._playlist = []
         self._index = -1
+        self._poll_timer = None
 
-    def add_files(self, paths: List[str]) -> None:
-        """
-        Add one or more files to the playlist.
-        If nothing is selected yet, auto-select the first so the UI can play.
-        """
-        self._playlist.extend(paths)
-        if self._index == -1 and self._playlist:
-            self._index = 0
-            self._load_current()
-
-    def playlist(self) -> List[str]:
-        """Return a shallow copy of the playlist."""
-        return list(self._playlist)
-
-    # ---------------- Volume ----------------
     def set_volume(self, percent: int) -> None:
-        """Set output volume (0..100)."""
         percent = max(0, min(100, int(percent)))
-        self._audio.setVolume(percent / 100.0)
+        if self._player:
+            self._player.audio_set_volume(percent)
 
-    # ---------------- Core controls ----------------
     def _load_current(self) -> None:
-        """Load current index into QMediaPlayer and emit trackChanged."""
         if 0 <= self._index < len(self._playlist):
             path = self._playlist[self._index]
-            self._player.setSource(QUrl.fromLocalFile(path))
+            self._player = vlc.MediaPlayer(path)
             self.trackChanged.emit(path)
 
     def play(self) -> None:
-        """Start or resume playback. Only load track if source is empty and index is valid."""
-        if self._player.source().isEmpty() and self._playlist and 0 <= self._index < len(self._playlist):
+        if self._player is None and self._playlist and 0 <= self._index < len(self._playlist):
             self._load_current()
-        self._player.play()
+        if self._player:
+            self._player.play()
+            self._start_polling()
 
     def pause(self) -> None:
-        """Pause playback."""
-        self._player.pause()
+        if self._player:
+            self._player.pause()
+            self._stop_polling()
 
     def toggle_play(self) -> None:
-        """Toggle play/pause without relying on enum names (Pylance-safe)."""
-        if _enum_to_int(self._player.playbackState()) == _PLAYING_INT:
+        if self._player and self._player.is_playing():
             self.pause()
         else:
             self.play()
 
     def stop(self) -> None:
-        """Stop playback and reset position to 0."""
-        self._player.stop()
+        if self._player:
+            self._player.stop()
+            self._stop_polling()
 
     def seek(self, ms: int) -> None:
-        """Seek to absolute position in ms."""
-        self._player.setPosition(max(0, int(ms)))
+        if self._player:
+            self._player.set_time(max(0, int(ms)))
 
     def next(self) -> None:
-        """Advance to next track (wrap-around)."""
         if self._playlist:
+            self.stop()
             self._index = (self._index + 1) % len(self._playlist)
             self._load_current()
             self.play()
 
     def previous(self) -> None:
-        """Go to previous track (wrap-around)."""
         if self._playlist:
+            self.stop()
             self._index = (self._index - 1) % len(self._playlist)
             self._load_current()
             self.play()
 
-    # ---------------- Info ----------------
     def duration(self) -> int:
-        """Current track duration (ms)."""
         try:
-            return int(self._player.duration() or 0)
-        except TypeError:
-            return 0
+            if self._player:
+                return int(self._player.get_length() or 0)
+        except Exception:
+            pass
+        return 0
 
     def position(self) -> int:
-        """Current playback position (ms)."""
         try:
-            return int(self._player.position() or 0)
-        except TypeError:
-            return 0
+            if self._player:
+                return int(self._player.get_time() or 0)
+        except Exception:
+            pass
+        return 0
 
-    # ---------------- Qt -> our signals (forwarders) ----------------
-    @Slot(int)  # accept int; Qt converts qint64 -> int for Python
-    def _forward_position(self, pos_ms: int) -> None:
-        self.positionChanged.emit(int(pos_ms))
+    def playlist(self) -> list:
+        return list(self._playlist)
 
-    @Slot(int)
-    def _forward_duration(self, dur_ms: int) -> None:
-        self.durationChanged.emit(int(dur_ms))
+    def clear(self) -> None:
+        self.stop()
+        self._playlist.clear()
+        self._index = -1
 
-    @Slot(object)
-    def _forward_state(self, state_obj) -> None:
-        self.stateChanged.emit(_enum_to_int(state_obj))
+    def add_files(self, paths: list) -> None:
+        self._playlist.extend(paths)
+        if self._index == -1 and self._playlist:
+            self._index = 0
+            self._load_current()
 
-    @Slot(object)
-    def _forward_error(self, *args) -> None:
-        """Normalize error payloads to a single friendly string."""
-        if len(args) == 2:
-            _, err_str = args
-            self.errorOccurred.emit(str(err_str))
-        elif len(args) == 1:
-            self.errorOccurred.emit(f"Playback error: {args[0]}")
-        else:
-            self.errorOccurred.emit("Unknown playback error.")
-    # --- NEW: expose current index / track ---------------------------------
     def current_index(self) -> int:
-        """Return the 0-based index of the current track, or -1 if none selected."""
         return int(self._index)
 
     def current_track(self) -> str | None:
-        """Return the current track path or None if nothing is selected."""
         if 0 <= self._index < len(self._playlist):
             return self._playlist[self._index]
         return None
 
-    # --- NEW: set the entire playlist (for Load Playlist) -------------------
-    def set_playlist(self, paths: list[str], start_index: int = 0) -> None:
-        """
-        Replace the entire playlist and optionally set a starting index.
-        The player will load (but not auto-play) the selected track.
-        """
+    def set_playlist(self, paths: list, start_index: int = 0) -> None:
         self.stop()
         self._playlist = list(paths)
         if not self._playlist:
             self._index = -1
-            # Clear any loaded source to avoid showing stale metadata
-            self._player.setSource(QUrl())  # type: ignore[arg-type]
             return
-
-        # Clamp index into valid range
         self._index = max(0, min(int(start_index), len(self._playlist) - 1))
-        self._load_current()  # emits trackChanged
+        self._load_current()
 
+    def _start_polling(self):
+        if self._poll_timer is not None:
+            return
+        self._poll_timer = QTimer(self)
+        self._poll_timer.timeout.connect(self._poll_vlc)
+        self._poll_timer.start(200)
+
+    def _stop_polling(self):
+        if self._poll_timer is not None:
+            self._poll_timer.stop()
+            self._poll_timer = None
+
+    def _poll_vlc(self):
+        pos = self.position()
+        dur = self.duration()
+        self.positionChanged.emit(pos)
+        self.durationChanged.emit(dur)
+        if dur > 0 and pos >= dur:
+            self.playbackEnded.emit()

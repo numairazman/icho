@@ -31,6 +31,9 @@ if exist "requirements.txt" (
     echo [Icho] WARNING: requirements.txt not found; continuing...
 )
 
+REM ---------- Set VLC plugin path if present ----------
+if exist dist\plugins set VLC_PLUGIN_PATH=%cd%\dist\plugins
+
 REM ---------- Run the app ----------
 echo [Icho] Launching Icho...
 python main.py

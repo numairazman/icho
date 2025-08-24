@@ -18,7 +18,7 @@ from mutagen.id3._util import error as ID3Error
 from mutagen.flac import FLAC, Picture
 from mutagen.mp4 import MP4, MP4Cover
 
-USER_AGENT = "Icho/1.0 (https://example.local)"  # be a good netizen
+USER_AGENT = "Icho/1.4.1 (https://example.local)"  # be a good netizen
 
 @dataclass
 class TagInfo:

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file following the “Keep a Changelog” format. See https://keepachangelog.com for guidance.
 
+## [1.4.1] – 2025-08-23
+
+### Hotfix (Windows)
+
+- Switched audio backend from QMediaPlayer to python-vlc for reliable Windows playback
+- Fixed missing QtMultimedia backends on Windows
+- Thoroughly cleaned up AudioPlayer class for cross-platform support
+- Updated build and run scripts for Windows compatibility
+- Version string updated to v1.4.1 everywhere
+
+---
+
 ## [1.4.0] – 2025-08-23
 
 **A portable Windows .exe will be available soon in the Releases tab!**
